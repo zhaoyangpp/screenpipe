@@ -1,9 +1,6 @@
 #[cfg(target_os = "windows")]
 use std::{env, fs, process::Command};
-use std::{
-    io::Result,
-    process::{Command, Output},
-};
+use std::{io::Result, process::Output};
 
 fn main() {
     #[cfg(target_os = "windows")]
@@ -28,29 +25,29 @@ fn is_bun_installed() -> bool {
 fn run_bun_install_command(command: Result<Output>) {
     match command {
         Err(error) => {
-            println!("failed to install bun: {}", error);
-            println!("please install bun manually.");
+            println!("Failed to install bun: {}", error);
+            println!("Please install bun manually.");
         }
         Ok(output) => {
             if output.status.success() {
-                println!("bun installed successfully.");
+                println!("Bun installed successfully.");
             } else {
                 println!(
-                    "failed to install bun: {}",
+                    "Failed to install bun: {}",
                     String::from_utf8_lossy(&output.stderr)
                 );
-                println!("please install bun manually.");
+                println!("Please install bun manually.");
             }
         }
     }
 }
 
 fn install_bun() {
-    println!("installing bun...");
+    println!("Installing bun...");
 
     #[cfg(target_os = "windows")]
     {
-        println!("attempting to install bun using npm...");
+        println!("Attempting to install bun using npm...");
 
         run_bun_install_command(Command::new("npm").args(["install", "-g", "bun"]).output());
     }
@@ -74,18 +71,36 @@ fn install_onnxruntime() {
     }
 
     let url = "https://github.com/microsoft/onnxruntime/releases/download/v1.19.2/onnxruntime-win-x64-gpu-1.19.2.zip";
-    let resp = reqwest::blocking::get(url).expect("request failed");
-    let body = resp.bytes().expect("body invalid");
-    fs::write("./onnxruntime-win-x64-gpu-1.19.2.zip", &body);
-    let status = Command::new("unzip")
-        .args(["onnxruntime-win-x64-gpu-1.19.2.zip"])
-        .status()
-        .expect("failed to execute process");
-    if !status.success() {
-        panic!("failed to install onnx binary");
+    
+    // Download onnxruntime zip
+    match reqwest::blocking::get(url) {
+        Ok(resp) => match resp.bytes() {
+            Ok(body) => {
+                // Write to file
+                if let Err(e) = fs::write("./onnxruntime-win-x64-gpu-1.19.2.zip", &body) {
+                    panic!("Failed to write file: {}", e);
+                }
+
+                // Unzip the file
+                let status = Command::new("unzip")
+                    .args(["onnxruntime-win-x64-gpu-1.19.2.zip"])
+                    .status()
+                    .expect("Failed to execute unzip command");
+
+                if !status.success() {
+                    panic!("Failed to install onnxruntime binary");
+                }
+
+                // Rename extracted folder
+                if let Err(e) = fs::rename(
+                    "onnxruntime-win-x64-gpu-1.19.2",
+                    "../screenpipe-app-tauri/src-tauri/onnxruntime-win-x64-gpu-1.19.2",
+                ) {
+                    panic!("Failed to rename folder: {}", e);
+                }
+            }
+            Err(e) => panic!("Failed to read response body: {}", e),
+        },
+        Err(e) => panic!("Failed to fetch onnxruntime: {}", e),
     }
-    fs::rename(
-        "onnxruntime-win-x64-gpu-1.19.2",
-        "../screenpipe-app-tauri/src-tauri/onnxruntime-win-x64-gpu-1.19.2",
-    );
 }
