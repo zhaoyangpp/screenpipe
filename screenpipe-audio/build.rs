@@ -104,3 +104,4 @@ fn install_onnxruntime() {
         Err(e) => panic!("Failed to fetch onnxruntime: {}", e),
     }
 }
+
